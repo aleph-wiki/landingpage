@@ -43,6 +43,7 @@ fn main() -> anyhow::Result<()> {
                 .arg(&data_dir)
                 .arg("--bind")
                 .arg(format!("{}:{}", host, port))
+                .arg("--cors")
                 .status()?;
 
             if !status.success() {
