@@ -272,6 +272,11 @@ INSERT DATA {
     rdfs:comment "Resource Description Framework" ;
     schema:relatedTo concept:SPARQL .
 
+  # Link Session 1 concepts to the session
+  session:demo-session-1 schema:result concept:GraphDB .
+  session:demo-session-1 schema:result concept:SPARQL .
+  session:demo-session-1 schema:result concept:RDF .
+
   # Content for Session 2 - Programming concepts
   concept:Python a concept:Language ;
     rdfs:label "Python" ;
@@ -285,6 +290,11 @@ INSERT DATA {
     rdfs:label "React" ;
     rdfs:comment "JavaScript library for building user interfaces" ;
     schema:relatedTo concept:JavaScript .
+
+  # Link Session 2 concepts to the session
+  session:demo-session-2 schema:result concept:Python .
+  session:demo-session-2 schema:result concept:JavaScript .
+  session:demo-session-2 schema:result concept:React .
 }
 `;
 
@@ -407,12 +417,30 @@ INSERT DATA {
       const sessionsData = await this.executeSparqlQuery(sessionsQuery);
       await this.extractSessionsAndInteractions(sessionsData);
 
+      // Query for session results (which nodes belong to which session)
+      const sessionResultsQuery = `
+        PREFIX schema: <http://schema.org/>
+        SELECT ?session ?result
+        WHERE {
+          ?session schema:result ?result .
+        }
+      `;
+
+      const sessionResultsData = await this.executeSparqlQuery(sessionResultsQuery);
+      this.extractSessionResults(sessionResultsData);
+
       // Query for all triples (content)
       const triplesQuery = `
+        PREFIX schema: <http://schema.org/>
         SELECT ?s ?p ?o
         WHERE {
           ?s ?p ?o .
-          FILTER(!CONTAINS(STR(?s), "session:") && !CONTAINS(STR(?s), "interaction:") && !CONTAINS(STR(?s), "agent:"))
+          FILTER(
+            !CONTAINS(STR(?s), "session:") &&
+            !CONTAINS(STR(?s), "interaction:") &&
+            !CONTAINS(STR(?s), "agent:") &&
+            ?p != schema:result
+          )
         }
       `;
 
@@ -504,9 +532,29 @@ INSERT DATA {
     console.log('Extracted sessions:', this.sessions);
   }
 
+  extractSessionResults(results) {
+    // Build mapping of session URI to session index
+    const sessionUriToIndex = new Map();
+    this.sessions.forEach((session, index) => {
+      sessionUriToIndex.set(session.uri, index);
+    });
+
+    // Extract node-to-session mappings from schema:result relationships
+    results.forEach(row => {
+      const sessionUri = row.session.value;
+      const resultNode = this.shortenURI(row.result.value);
+      const sessionIndex = sessionUriToIndex.get(sessionUri);
+
+      if (sessionIndex !== undefined) {
+        this.nodeToSession.set(resultNode, sessionIndex);
+      }
+    });
+
+    console.log('Extracted session results:', this.nodeToSession);
+  }
+
   generateStatesFromTriples(sparqlTriples) {
     const newStates = [];
-    this.nodeToSession.clear(); // Reset node-to-session mapping
 
     // Convert SPARQL results to internal triple format
     const allContentTriples = sparqlTriples.map(row => ({
@@ -549,13 +597,6 @@ INSERT DATA {
         const triplesToShow = [...allPreviousContent, ...currentSessionContent];
 
         const graphData = this.triplesToGraphFromSparql(triplesToShow);
-
-        // Track which nodes belong to which session (first appearance wins)
-        graphData.nodes.forEach(node => {
-          if (!this.nodeToSession.has(node.id)) {
-            this.nodeToSession.set(node.id, sessionIndex);
-          }
-        });
 
         console.log(`State ${newStates.length}: Session ${sessionIndex}, Interaction ${interactionIndex}: ${triplesToShow.length} triples, ${graphData.nodes.length} nodes, ${graphData.links.length} links`);
 
