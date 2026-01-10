@@ -1,0 +1,11 @@
+[
+  {
+    "email": "dev@localhost",
+    "password": "dev123",
+    "pods": [
+      {
+        "name": "dev"
+      }
+    ]
+  }
+]

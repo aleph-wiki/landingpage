@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "solid": "npx -y @solid/community-server@7 -c @css:config/file.json -f .solid-data/ -p 3000 --seedConfig css-seeded-pods.json",
+    "dev:all": "concurrently \"npm run solid\" \"npm run dev\" --names \"solid,vite\" --prefix-colors \"blue,green\""
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "vite": "^7.2.4"
   },
   "dependencies": {
+    "@comunica/query-sparql": "^3.3.0",
     "d3": "^7.9.0",
     "n3": "^2.0.1"
   }
