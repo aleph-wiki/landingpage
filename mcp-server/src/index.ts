@@ -76,6 +76,29 @@ export async function readRdfResource(url: string): Promise<string> {
 }
 
 /**
+ * Append RDF triples to a resource using SPARQL UPDATE PATCH
+ */
+export async function appendTriples(url: string, triples: string): Promise<void> {
+  if (!solidSession) {
+    throw new Error("Solid session not initialized");
+  }
+
+  const sparqlUpdate = `INSERT DATA {\n${triples}\n}`;
+
+  const response = await solidSession.fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/sparql-update",
+    },
+    body: sparqlUpdate,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to append triples: ${response.statusText}`);
+  }
+}
+
+/**
  * Register MCP tools on the server
  */
 export function registerTools(server: Server) {
@@ -112,6 +135,24 @@ export function registerTools(server: Server) {
         required: ["url"],
       },
     },
+    {
+      name: "rdf_append",
+      description: "Append RDF triples to a Solid Pod resource using SPARQL UPDATE",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "URL of the RDF resource to append to",
+          },
+          triples: {
+            type: "string",
+            description: "RDF triples to append in Turtle format",
+          },
+        },
+        required: ["url", "triples"],
+      },
+    },
   ];
 
   server.setRequestHandler(
@@ -143,6 +184,19 @@ export function registerTools(server: Server) {
             {
               type: "text",
               text: rdfContent,
+            },
+          ],
+        };
+      }
+
+      if (request.params.name === "rdf_append") {
+        const { url, triples } = request.params.arguments as any;
+        await appendTriples(url, triples);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully appended triples to ${url}`,
             },
           ],
         };
