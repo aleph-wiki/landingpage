@@ -25,8 +25,7 @@
 :AlephSession a owl:Class ;
     rdfs:label "Aleph Session"@en ;
     rdfs:comment "A session within the Aleph Wiki system, representing a distinct interaction period."@en ;
-    rdfs:subClassOf schema:Event ;
-    owl:equivalentClass schema:InteractionSession .
+    rdfs:subClassOf schema:Event .
 
 :ClaudeCodeSession a owl:Class ;
     rdfs:label "Claude Code Session"@en ;
@@ -38,7 +37,7 @@
 :InteractionAction a owl:Class ;
     rdfs:label "Interaction Action"@en ;
     rdfs:comment "An action representing an interaction within an Aleph session."@en ;
-    owl:equivalentClass schema:InteractionAction .
+    owl:equivalentClass schema:InteractAction .
 
 :LearningInteraction a owl:Class ;
     rdfs:label "Learning Interaction"@en ;
