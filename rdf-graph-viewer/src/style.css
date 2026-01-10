@@ -447,6 +447,27 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.action-btn {
+  padding: 10px 20px;
+  background: #646cff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 500;
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.action-btn:hover {
+  background: #535bf2;
+}
+
+.action-btn:active {
+  background: #4248d9;
+}
+
 .radio-group {
   display: flex;
   gap: 8px;

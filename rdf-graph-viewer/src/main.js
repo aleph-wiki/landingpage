@@ -14,11 +14,12 @@ class RDFGraphViewer {
 
     // Settings
     this.settings = {
-      sparqlEndpoint: 'http://localhost:3030/aleph-wiki/sparql',
+      sparqlEndpoint: 'http://localhost:7878/query',
       nodeSize: 20,
       linkDistance: 150,
       chargeStrength: -400,
-      typeDisplay: 'on' // 'on' = tags, 'nodes' = show as nodes, 'off' = hide
+      typeDisplay: 'on', // 'on' = tags, 'nodes' = show as nodes, 'off' = hide
+      debugMode: true
     };
 
     this.svg = d3.select('#graph');
@@ -101,6 +102,11 @@ class RDFGraphViewer {
       this.sessions = [];
       console.log('Changed SPARQL endpoint to:', this.settings.sparqlEndpoint);
       this.loadFromSparql();
+    });
+
+    // Load sample data button
+    document.getElementById('load-sample-btn').addEventListener('click', () => {
+      this.loadSampleData();
     });
 
     // Node size
@@ -206,6 +212,91 @@ class RDFGraphViewer {
     }
   }
 
+  async loadSampleData() {
+    try {
+      console.log('Loading sample data into SPARQL endpoint...');
+
+      // Use SPARQL UPDATE with proper prefixes
+      const updateQuery = `
+PREFIX session: <http://aleph-wiki.local/session/>
+PREFIX interaction: <http://aleph-wiki.local/interaction/>
+PREFIX concept: <http://aleph-wiki.local/concept/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX schema: <http://schema.org/>
+
+INSERT DATA {
+  # Session
+  session:demo-session a schema:Session ;
+    schema:startTime "2026-01-10T12:00:00Z"^^xsd:dateTime .
+
+  # Interactions
+  interaction:demo-1 a schema:InteractionAction ;
+    schema:agent session:demo-session ;
+    schema:startTime "2026-01-10T12:00:00Z"^^xsd:dateTime .
+
+  interaction:demo-2 a schema:InteractionAction ;
+    schema:agent session:demo-session ;
+    schema:startTime "2026-01-10T12:01:00Z"^^xsd:dateTime .
+
+  interaction:demo-3 a schema:InteractionAction ;
+    schema:agent session:demo-session ;
+    schema:startTime "2026-01-10T12:02:00Z"^^xsd:dateTime .
+
+  # Content
+  concept:GraphDB a concept:Technology ;
+    rdfs:label "Graph Database" ;
+    rdfs:comment "A database that uses graph structures for queries" .
+
+  concept:SPARQL a concept:Language ;
+    rdfs:label "SPARQL" ;
+    rdfs:comment "RDF query language" ;
+    schema:relatedTo concept:GraphDB .
+
+  concept:RDF a concept:Standard ;
+    rdfs:label "RDF" ;
+    rdfs:comment "Resource Description Framework" ;
+    schema:relatedTo concept:SPARQL .
+}
+`;
+
+      if (this.settings.debugMode) {
+        console.log('=== SPARQL UPDATE ===');
+        console.log(updateQuery);
+        console.log('====================');
+      }
+
+      // Use SPARQL UPDATE to insert data
+      const updateEndpoint = this.settings.sparqlEndpoint.replace('/query', '/update');
+
+      const response = await fetch(updateEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/sparql-update'
+        },
+        body: updateQuery
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (this.settings.debugMode) {
+          console.error('SPARQL Update Error:', errorText);
+        }
+        throw new Error(`Failed to load sample data: ${response.statusText}`);
+      }
+
+      console.log('Sample data loaded successfully');
+
+      // Reload from SPARQL
+      await this.loadFromSparql();
+
+    } catch (error) {
+      console.error('Error loading sample data:', error);
+      alert('Failed to load sample data. Make sure your SPARQL endpoint supports UPDATE queries at /update');
+    }
+  }
+
   async loadFromSparql() {
     try {
       console.log('Loading from SPARQL endpoint:', this.settings.sparqlEndpoint);
@@ -253,6 +344,12 @@ class RDFGraphViewer {
   }
 
   async executeSparqlQuery(query) {
+    if (this.settings.debugMode) {
+      console.log('=== SPARQL QUERY ===');
+      console.log(query);
+      console.log('===================');
+    }
+
     const response = await fetch(this.settings.sparqlEndpoint, {
       method: 'POST',
       headers: {
@@ -263,10 +360,21 @@ class RDFGraphViewer {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      if (this.settings.debugMode) {
+        console.error('SPARQL Query Error:', errorText);
+      }
       throw new Error(`SPARQL query failed: ${response.statusText}`);
     }
 
     const data = await response.json();
+
+    if (this.settings.debugMode) {
+      console.log('=== SPARQL RESULTS ===');
+      console.log(data);
+      console.log('=====================');
+    }
+
     return data.results.bindings;
   }
 
