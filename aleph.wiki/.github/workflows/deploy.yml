@@ -18,6 +18,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./aleph.wiki
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,14 +41,14 @@ jobs:
 
       - name: Copy CNAME if exists
         run: |
-          if [ -f CNAME ]; then
-            cp CNAME dist/
+          if [ -f ../CNAME ]; then
+            cp ../CNAME dist/
           fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./aleph.wiki/dist
 
   deploy:
     environment:
