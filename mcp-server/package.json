@@ -9,6 +9,8 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude 'test/e2e/**'",
+    "test:e2e": "vitest run test/e2e",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"
