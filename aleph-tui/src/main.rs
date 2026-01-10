@@ -44,7 +44,6 @@ fn main() -> anyhow::Result<()> {
                 .arg("--bind")
                 .arg(format!("{}:{}", host, port))
                 .arg("--cors")
-                .arg("--read-write")
                 .status()?;
 
             if !status.success() {

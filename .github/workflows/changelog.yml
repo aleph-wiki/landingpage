@@ -48,7 +48,7 @@ jobs:
             # Update existing draft
             echo "Updating existing draft release (ID: $DRAFT_EXISTS)..."
             gh api -X PATCH repos/:owner/:repo/releases/$DRAFT_EXISTS \
-              -f body="@RELEASE_NOTES.md" \
+              -F body=@RELEASE_NOTES.md \
               -f tag_name="unreleased" \
               -f name="Unreleased" \
               -F draft=true
