@@ -227,22 +227,29 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX schema: <http://schema.org/>
 
 INSERT DATA {
-  # Session
-  session:demo-session a schema:Session ;
+  # Session 1
+  session:demo-session-1 a schema:Session ;
     schema:startTime "2026-01-10T12:00:00Z"^^xsd:dateTime .
 
-  # Interactions
-  interaction:demo-1 a schema:InteractionAction ;
-    schema:agent session:demo-session ;
+  interaction:demo-1-1 a schema:InteractionAction ;
+    schema:agent session:demo-session-1 ;
     schema:startTime "2026-01-10T12:00:00Z"^^xsd:dateTime .
 
-  interaction:demo-2 a schema:InteractionAction ;
-    schema:agent session:demo-session ;
+  interaction:demo-1-2 a schema:InteractionAction ;
+    schema:agent session:demo-session-1 ;
     schema:startTime "2026-01-10T12:01:00Z"^^xsd:dateTime .
 
-  interaction:demo-3 a schema:InteractionAction ;
-    schema:agent session:demo-session ;
-    schema:startTime "2026-01-10T12:02:00Z"^^xsd:dateTime .
+  # Session 2 (starts 1 hour later)
+  session:demo-session-2 a schema:Session ;
+    schema:startTime "2026-01-10T13:00:00Z"^^xsd:dateTime .
+
+  interaction:demo-2-1 a schema:InteractionAction ;
+    schema:agent session:demo-session-2 ;
+    schema:startTime "2026-01-10T13:00:00Z"^^xsd:dateTime .
+
+  interaction:demo-2-2 a schema:InteractionAction ;
+    schema:agent session:demo-session-2 ;
+    schema:startTime "2026-01-10T13:05:00Z"^^xsd:dateTime .
 
   # Content
   concept:GraphDB a concept:Technology ;
@@ -258,6 +265,11 @@ INSERT DATA {
     rdfs:label "RDF" ;
     rdfs:comment "Resource Description Framework" ;
     schema:relatedTo concept:SPARQL .
+
+  concept:Ontology a concept:Concept ;
+    rdfs:label "Ontology" ;
+    rdfs:comment "Formal representation of knowledge" ;
+    schema:relatedTo concept:RDF .
 }
 `;
 
