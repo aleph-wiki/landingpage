@@ -195,45 +195,6 @@ bun run test:coverage
 
 **Note**: Tests use Node.js via vitest (not Bun directly) due to Comunica's dependency on Node.js-specific APIs.
 
-## TODOs
-
-### High Priority
-
-- [ ] **Public Semantic Web Browsing**: Allow querying random RDF documents and SPARQL endpoints without Solid authentication
-  - Add `rdf_fetch` tool for public RDF resources (no auth required)
-  - Add `sparql_endpoint` tool for querying public SPARQL endpoints (DBpedia, Wikidata, etc.)
-  - Enable AI to browse the semantic web: follow `rdfs:seeAlso` links, explore ontologies, discover linked data
-  - Support content negotiation (Turtle, RDF/XML, JSON-LD, N-Triples)
-
-- [ ] Resource creation: `PUT` method to create new resources
-- [ ] Resource deletion: `DELETE` method to remove resources
-- [ ] Container creation: Create new containers in Pods
-- [ ] Access control management: Read/write ACL policies
-
-### Medium Priority
-
-- [ ] SPARQL UPDATE support: Full update operations beyond INSERT DATA
-- [ ] Batch operations: Multiple resources in a single request
-- [ ] Better error messages with context and recovery suggestions
-- [ ] Streaming support for large query results
-- [ ] Query result caching with invalidation
-
-### Low Priority
-
-- [ ] WebSocket notifications for real-time updates
-- [ ] Support for additional RDF formats (JSON-LD, RDF/XML, N-Triples)
-- [ ] Query optimization hints
-- [ ] Resource metadata queries (size, modified date, content type)
-- [ ] Federated queries across multiple Pods
-
-### Research
-
-- [ ] Explore WAC (Web Access Control) integration
-- [ ] Investigate ACP (Access Control Policy) support
-- [ ] Consider SPARQL 1.1 Federation support
-- [ ] Evaluate performance with large datasets
-- [ ] Research offline/local-first capabilities
-
 ## Security Considerations
 
 - Credentials should be stored securely (environment variables, secret manager)

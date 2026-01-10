@@ -86,17 +86,6 @@ The agent runs as a skill within Claude Code and writes semantic triples to your
 
 The graph structure allows filtering by session, time period, topic hierarchy, or semantic relationships - supporting both visual exploration and SPARQL queries for research.
 
-## Roadmap
-
-- [ ] MCP server integration for agent-to-Pod communication
-- [ ] SPARQL query capabilities via MCP
-- [ ] Solid Protocol backend integration
-- [ ] Web-based graph visualizer (Solid app)
-- [ ] Real-time updates via WebSocket notifications
-- [ ] Multi-user collaboration features
-- [ ] Advanced graph layouts (hierarchical, temporal, semantic)
-- [ ] Export/import functionality
-
 ## License
 
 AGPL-3.0 - see [LICENSE](./LICENSE) for details.

@@ -413,39 +413,6 @@ User B can read User A's concepts and link to them:
    - Reference shared concepts
    - Visualizer shows merged view
 
-## Implementation Tasks
-
-### Phase 1: Agent Solid Support
-- [ ] Add Solid client dependencies
-- [ ] Implement authentication flow
-- [ ] Replace file writes with Solid PATCH operations
-- [ ] Handle Pod initialization (create containers, set ACLs)
-- [ ] Add error handling and retry logic
-- [ ] Update rdf-learning.md skill with Solid instructions
-- [ ] Create configuration mechanism for Pod URL
-
-### Phase 2: Basic Visualizer
-- [ ] Set up Solid React app scaffolding
-- [ ] Implement user authentication
-- [ ] Load and parse RDF from Pod
-- [ ] Basic graph rendering with Cytoscape.js
-- [ ] Display node details on click
-- [ ] Filter by session
-
-### Phase 3: Advanced Features
-- [ ] WebSocket notifications for live updates
-- [ ] Multi-language support in UI
-- [ ] Timeline view for temporal exploration
-- [ ] SPARQL query interface
-- [ ] Export functionality
-- [ ] Shared concept linking
-
-### Phase 4: Multi-User
-- [ ] Shared ontology containers
-- [ ] Cross-Pod concept references
-- [ ] Team workspace support
-- [ ] Access control management UI
-
 ## Testing Plan
 
 ### Agent Testing
