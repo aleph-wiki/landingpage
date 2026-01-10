@@ -14,6 +14,7 @@ class RDFGraphViewer {
     this.isPaused = false;
     this.lastRdfContent = null;
     this.nodeToSession = new Map(); // Track which session each node belongs to
+    this.nodeFullURIs = new Map(); // Map shortened node IDs to full URIs
 
     // Settings
     this.settings = {
@@ -79,6 +80,12 @@ class RDFGraphViewer {
     this.settingsOverlay = document.getElementById('settings-overlay');
     this.closeSettingsBtn = document.getElementById('close-settings-btn');
 
+    // Node details overlay
+    this.nodeDetailsOverlay = document.getElementById('node-details-overlay');
+    this.nodeDetailsTitle = document.getElementById('node-details-title');
+    this.nodeDetailsContent = document.getElementById('node-details-content');
+    this.closeNodeDetailsBtn = document.getElementById('close-node-details-btn');
+
     // Settings controls
     this.sparqlEndpointInput = document.getElementById('sparql-endpoint');
     this.nodeSizeInput = document.getElementById('node-size');
@@ -98,6 +105,11 @@ class RDFGraphViewer {
     // Close/toggle settings
     this.closeSettingsBtn.addEventListener('click', () => {
       this.settingsOverlay.classList.remove('open');
+    });
+
+    // Close node details
+    this.closeNodeDetailsBtn.addEventListener('click', () => {
+      this.nodeDetailsOverlay.classList.remove('open');
     });
 
     // SPARQL endpoint
@@ -413,8 +425,47 @@ INSERT DATA {
 
       // Raw mode: query ALL triples without any session/interaction constraints
       if (this.settings.rawMode) {
-        console.log('Raw mode: querying all triples without filters');
+        console.log('Raw mode: querying all triples and sessions/interactions');
 
+        // Query for sessions and interactions (newest first)
+        const sessionsQuery = `
+          PREFIX schema: <http://schema.org/>
+          PREFIX session: <http://aleph-wiki.local/session/>
+          PREFIX interaction: <http://aleph-wiki.local/interaction/>
+
+          SELECT ?session ?sessionStart ?interaction ?interactionStart
+          WHERE {
+            ?session a ?sessionType ;
+                     schema:startTime ?sessionStart .
+            FILTER(CONTAINS(STR(?sessionType), "Session"))
+
+            OPTIONAL {
+              ?interaction schema:agent ?session ;
+                          schema:startTime ?interactionStart .
+              FILTER(CONTAINS(STR(?interactionType), "Interaction"))
+              ?interaction a ?interactionType .
+            }
+          }
+          ORDER BY DESC(?sessionStart) DESC(?interactionStart)
+        `;
+
+        const sessionsData = await this.executeSparqlQuery(sessionsQuery);
+        await this.extractSessionsAndInteractions(sessionsData);
+
+        // If no sessions found, create a dummy one for raw mode
+        if (this.sessions.length === 0) {
+          this.sessions = [{
+            uri: 'raw-mode-session',
+            startTime: new Date().toISOString(),
+            interactions: [{
+              uri: 'raw-mode-interaction',
+              startTime: new Date().toISOString(),
+              session: 'raw-mode-session'
+            }]
+          }];
+        }
+
+        // Query all triples without filtering
         const rawQuery = `
           SELECT ?s ?p ?o
           WHERE {
@@ -432,17 +483,6 @@ INSERT DATA {
           return;
         }
 
-        // Create a dummy session/interaction structure for raw mode
-        this.sessions = [{
-          uri: 'raw-mode-session',
-          startTime: new Date().toISOString(),
-          interactions: [{
-            uri: 'raw-mode-interaction',
-            startTime: new Date().toISOString(),
-            session: 'raw-mode-session'
-          }]
-        }];
-
         // Convert to the expected format with dummy timestamps
         // rawData already has the structure { s: {...}, p: {...}, o: {...} }
         const allTriples = rawData.map(row => ({
@@ -457,7 +497,7 @@ INSERT DATA {
         return;
       }
 
-      // Normal mode: Query for sessions and interactions
+      // Normal mode: Query for sessions and interactions (newest first)
       const sessionsQuery = `
         PREFIX schema: <http://schema.org/>
         PREFIX session: <http://aleph-wiki.local/session/>
@@ -476,7 +516,7 @@ INSERT DATA {
             ?interaction a ?interactionType .
           }
         }
-        ORDER BY ?sessionStart ?interactionStart
+        ORDER BY DESC(?sessionStart) DESC(?interactionStart)
       `;
 
       const sessionsData = await this.executeSparqlQuery(sessionsQuery);
@@ -600,6 +640,8 @@ INSERT DATA {
           startTime: sessionStart,
           interactions: []
         });
+        // Store full URI mapping for sessions
+        this.nodeFullURIs.set(this.shortenURI(sessionUri), sessionUri);
       }
 
       if (row.interaction) {
@@ -611,12 +653,14 @@ INSERT DATA {
           startTime: interactionStart,
           session: sessionUri
         });
+        // Store full URI mapping for interactions
+        this.nodeFullURIs.set(this.shortenURI(interactionUri), interactionUri);
       }
     });
 
-    // Sort sessions by start time
+    // Sort sessions by start time (newest first)
     this.sessions = Array.from(sessionMap.values())
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      .sort((a, b) => b.startTime.localeCompare(a.startTime));
 
     // Sort interactions within each session and remove duplicates
     this.sessions.forEach((session, index) => {
@@ -625,7 +669,7 @@ INSERT DATA {
         uniqueInteractions.set(int.uri, int);
       });
       session.interactions = Array.from(uniqueInteractions.values())
-        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+        .sort((a, b) => b.startTime.localeCompare(a.startTime));
 
       // Map session nodes to their session index for clustering
       const sessionShortUri = this.shortenURI(session.uri);
@@ -770,12 +814,34 @@ INSERT DATA {
         }
 
         // Click to navigate to this interaction
-        interactionBtn.addEventListener('click', (e) => {
+        interactionBtn.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
           const targetIndex = parseInt(e.currentTarget.dataset.stateIndex);
-          console.log('Interaction button clicked, seeking to state', targetIndex);
-          this.seekToState(targetIndex);
+
+          // Right-click or Ctrl+click shows details
+          if (e.button === 2 || e.ctrlKey || e.metaKey) {
+            const state = this.states[targetIndex];
+            if (state) {
+              const interactionShortId = this.shortenURI(state.interactionUri);
+              await this.showNodeDetails(state.interactionUri, interactionShortId);
+            }
+          } else {
+            // Normal click navigates
+            console.log('Interaction button clicked, seeking to state', targetIndex);
+            this.seekToState(targetIndex);
+          }
+        });
+
+        // Also handle context menu (right-click)
+        interactionBtn.addEventListener('contextmenu', async (e) => {
+          e.preventDefault();
+          const targetIndex = parseInt(e.currentTarget.dataset.stateIndex);
+          const state = this.states[targetIndex];
+          if (state) {
+            const interactionShortId = this.shortenURI(state.interactionUri);
+            await this.showNodeDetails(state.interactionUri, interactionShortId);
+          }
         });
 
         sessionContainer.appendChild(interactionBtn);
@@ -824,11 +890,18 @@ INSERT DATA {
 
     console.log('Building graph from SPARQL triples:', triples.length);
 
-    // First pass: identify rdf:type relationships
+    // First pass: identify rdf:type relationships and store full URIs
     triples.forEach(triple => {
       const subject = this.shortenURI(triple.subject);
       const predicate = this.shortenURI(triple.predicate);
       const object = this.shortenURI(triple.object);
+      const isObjectUri = triple.objectType === 'uri';
+
+      // Store full URIs for later lookup (only for URIs, not literals)
+      this.nodeFullURIs.set(subject, triple.subject);
+      if (isObjectUri) {
+        this.nodeFullURIs.set(object, triple.object);
+      }
 
       if (predicate === 'type') {
         if (!nodeTypes.has(subject)) {
@@ -1192,6 +1265,7 @@ INSERT DATA {
         .on('start', (event, d) => this.dragStarted(event, d))
         .on('drag', (event, d) => this.dragged(event, d))
         .on('end', (event, d) => this.dragEnded(event, d)))
+      .on('click', (event, d) => this.nodeClicked(event, d))
       .on('dblclick', (event, d) => this.nodeDoubleClicked(event, d));
 
     nodeEnter.append('circle')
@@ -1317,6 +1391,119 @@ INSERT DATA {
     if (!event.active) this.simulation.alphaTarget(0);
     // Keep the node pinned where the user dragged it
     // d.fx and d.fy remain set, preventing the node from drifting
+  }
+
+  async nodeClicked(event, d) {
+    event.stopPropagation();
+    console.log('Node clicked:', d.id);
+
+    // Check if this looks like a literal value (timestamps, plain text, etc.)
+    // Literals shouldn't be clickable nodes
+    if (d.id.match(/^\d{4}-\d{2}-\d{2}T/) || !d.id.match(/^[a-zA-Z0-9-_]+$/)) {
+      console.warn('Skipping literal value node:', d.id);
+      return;
+    }
+
+    // Get full URI for this node
+    let fullURI = this.nodeFullURIs.get(d.id);
+
+    // If not found, try to reconstruct it from node ID pattern
+    if (!fullURI) {
+      console.warn('No full URI found for node:', d.id, '- attempting to reconstruct');
+
+      // Detect prefix based on node ID pattern
+      const dashCount = (d.id.match(/-/g) || []).length;
+      if (dashCount >= 2) {
+        // Looks like an interaction ID (e.g., demo-1-1)
+        fullURI = 'http://aleph-wiki.local/interaction/' + d.id;
+      } else if (d.id.startsWith('demo')) {
+        // Looks like a session ID (e.g., demo, demo-1)
+        fullURI = 'http://aleph-wiki.local/session/' + d.id;
+      } else if (d.id === 'label' || d.id === 'comment') {
+        fullURI = 'http://www.w3.org/2000/01/rdf-schema#' + d.id;
+      } else if (['startTime', 'agent', 'result', 'relatedTo'].includes(d.id)) {
+        fullURI = 'http://schema.org/' + d.id;
+      } else {
+        // Assume it's a concept
+        fullURI = 'http://aleph-wiki.local/concept/' + d.id;
+      }
+
+      console.log('Reconstructed URI:', fullURI);
+    }
+
+    if (!fullURI) {
+      console.error('Could not determine full URI for node:', d.id);
+      alert(`Cannot find full URI for node: ${d.id}`);
+      return;
+    }
+
+    // Query for all properties of this node
+    await this.showNodeDetails(fullURI, d.id);
+  }
+
+  async showNodeDetails(fullURI, shortID) {
+    try {
+      // Query for all triples where this node is the subject
+      const query = `
+        SELECT ?p ?o
+        WHERE {
+          <${fullURI}> ?p ?o .
+        }
+      `;
+
+      const results = await this.executeSparqlQuery(query);
+      console.log('Node properties:', results);
+
+      // Display the results
+      this.displayNodeDetails(shortID, fullURI, results);
+    } catch (error) {
+      console.error('Error fetching node details:', error);
+      this.nodeDetailsContent.innerHTML = '<p style="color: #f44;">Error loading node details</p>';
+    }
+  }
+
+  displayNodeDetails(shortID, fullURI, properties) {
+    // Set title
+    this.nodeDetailsTitle.textContent = shortID;
+
+    // Build content
+    let html = '';
+
+    // Add full URI first
+    html += `
+      <div class="node-property">
+        <div class="property-label">URI</div>
+        <div class="property-value uri">${this.escapeHtml(fullURI)}</div>
+      </div>
+    `;
+
+    // Add all properties
+    properties.forEach(prop => {
+      const predicate = this.shortenURI(prop.p.value);
+      const isLiteral = prop.o.type === 'literal';
+      const value = prop.o.value;
+      const valueClass = isLiteral ? 'literal' : 'uri';
+
+      html += `
+        <div class="node-property">
+          <div class="property-label">${this.escapeHtml(predicate)}</div>
+          <div class="property-value ${valueClass}">${this.escapeHtml(value)}</div>
+        </div>
+      `;
+    });
+
+    if (properties.length === 0) {
+      html += '<p style="color: #888;">No properties found for this node.</p>';
+    }
+
+    this.nodeDetailsContent.innerHTML = html;
+    this.nodeDetailsOverlay.classList.add('open');
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   nodeDoubleClicked(event, d) {
