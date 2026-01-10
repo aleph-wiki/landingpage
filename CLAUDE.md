@@ -14,6 +14,8 @@ via vitest due to Comunica compatibility. Add tests before implementing features
 **Commits**: Always reference `.conventional-commits.md` to determine the correct format
 and type for commit messages. Follow the specification exactly. Keep commit messages
 concise - use a brief subject line (max 72 chars) and only add body text if necessary.
+Do NOT include verbose file-by-file breakdowns or bullet lists of changes. Focus on the
+"why" and overall impact, not granular "what changed in each file" details.
 
 **TDD workflow**: Use `/tdd [feature]` to implement features using dual-agent TDD:
 - Test Agent writes failing tests first
