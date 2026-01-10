@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { Session } from "@inrupt/solid-client-authn-node";
+import { Parser, Store } from "n3";
 
 /**
  * MCP Server for Solid Pod RDF Operations
@@ -99,6 +100,40 @@ export async function appendTriples(url: string, triples: string): Promise<void>
 }
 
 /**
+ * Match RDF triples using pattern matching
+ */
+export async function sparqlMatch(
+  url: string,
+  subject?: string | null,
+  predicate?: string | null,
+  object?: string | null
+): Promise<Array<{ subject: string; predicate: string; object: string }>> {
+  // Read RDF resource
+  const rdfContent = await readRdfResource(url);
+
+  // Parse Turtle with N3.js
+  const parser = new Parser();
+  const store = new Store();
+  const quads = parser.parse(rdfContent);
+  store.addQuads(quads);
+
+  // Use store.getQuads() for pattern matching (null = wildcard)
+  const matches = store.getQuads(
+    subject || null,
+    predicate || null,
+    object || null,
+    null
+  );
+
+  // Convert quads to JSON array
+  return matches.map((quad) => ({
+    subject: quad.subject.value,
+    predicate: quad.predicate.value,
+    object: quad.object.value,
+  }));
+}
+
+/**
  * Register MCP tools on the server
  */
 export function registerTools(server: Server) {
@@ -153,6 +188,32 @@ export function registerTools(server: Server) {
         required: ["url", "triples"],
       },
     },
+    {
+      name: "sparql_match",
+      description: "Match RDF triples using pattern matching with wildcards",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "URL of the RDF resource to query",
+          },
+          subject: {
+            type: "string",
+            description: "Subject URI to match (optional, null for wildcard)",
+          },
+          predicate: {
+            type: "string",
+            description: "Predicate URI to match (optional, null for wildcard)",
+          },
+          object: {
+            type: "string",
+            description: "Object URI or literal to match (optional, null for wildcard)",
+          },
+        },
+        required: ["url"],
+      },
+    },
   ];
 
   server.setRequestHandler(
@@ -197,6 +258,31 @@ export function registerTools(server: Server) {
             {
               type: "text",
               text: `Successfully appended triples to ${url}`,
+            },
+          ],
+        };
+      }
+
+      if (request.params.name === "sparql_match") {
+        const { url, subject, predicate, object } = request.params.arguments as any;
+        const matches = await sparqlMatch(url, subject, predicate, object);
+
+        if (matches.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No matches found (0 triples)",
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(matches, null, 2),
             },
           ],
         };
