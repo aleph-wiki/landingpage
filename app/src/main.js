@@ -22,7 +22,7 @@ class RDFGraphViewer {
       linkDistance: 150,
       chargeStrength: -400,
       typeDisplay: 'on', // 'on' = tags, 'nodes' = show as nodes, 'off' = hide
-      rawMode: false, // Show all nodes regardless of timestamp
+      rawMode: true, // Show all nodes regardless of timestamp
       debugMode: true
     };
 
