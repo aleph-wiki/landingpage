@@ -1,45 +1,71 @@
-# E2E Tests for Solid MCP Server
+# E2E Tests
 
-End-to-end tests that run against a real Community Solid Server instance.
+End-to-end tests for the MCP server against a real Community Solid Server instance.
 
 ## Prerequisites
 
-1. **CSS Server Running**: Start the CSS dev server from the app directory:
-   ```bash
-   cd ../app
-   bun run solid
-   ```
-   This starts CSS on `http://localhost:3000` with a seeded pod.
+1. **Community Solid Server running** on http://localhost:3000
+   - Start with: `cd ../../solid-dev-server && bun run dev`
+   - This starts CSS with file-based storage and seeded account (dev@localhost)
 
-2. **Test Pod**: The seeded pod credentials are:
-   - Email: `dev@localhost`
-   - Password: `dev123`
-   - WebID: `http://localhost:3000/dev/profile/card#me`
-   - Pod URL: `http://localhost:3000/dev/`
+2. **Test credentials generated**
+   - Run: `./test/e2e/scripts/setup-credentials.sh`
+   - Or: `bun run test:e2e:setup`
+   - Creates `.env.test` with client credentials
 
-## Running E2E Tests
+## Running Tests
 
 ```bash
-# Ensure CSS is running first
-cd ../app && bun run solid &
+# Setup credentials (one-time or when CSS data is cleared)
+bun run test:e2e:setup
 
-# Run E2E tests
-bun test:e2e
+# Run all e2e tests
+bun run test:e2e
 
-# Or run all tests including E2E
-bun test
+# Run specific e2e test file
+bun test test/e2e/solid-auth.e2e.test.ts
 ```
 
-## What Gets Tested
+## Test Credentials
 
-- **Authentication**: Real session creation with CSS
-- **RDF Operations**: Writing and reading actual RDF data
-- **SPARQL Queries**: Executing queries against real data
-- **Session Persistence**: Verifying session.fetch includes auth headers
+The setup script (`scripts/setup-credentials.sh`):
+1. Waits for CSS to be ready
+2. Logs in with seeded account (dev@localhost / dev123)
+3. Creates a pod if it doesn't exist
+4. Generates OAuth client credentials
+5. Saves to `test/e2e/.env.test` (git-ignored)
 
-## Test Isolation
+Environment variables in `.env.test`:
+- `TEST_CSS_URL` - Community Solid Server URL
+- `TEST_POD_URL` - Pod URL
+- `TEST_WEB_ID` - WebID for authentication
+- `TEST_CLIENT_ID` - OAuth client ID
+- `TEST_CLIENT_SECRET` - OAuth client secret
 
-Each test creates and cleans up its own test resources to avoid conflicts:
-- Test resources use unique identifiers
-- Cleanup happens in `afterEach` hooks
-- Tests can run in parallel
+These are automatically loaded by vitest config.
+
+## Troubleshooting
+
+**Tests fail with "CSS is not running"**
+- Start CSS: `cd ../../solid-dev-server && bun run dev`
+
+**Tests fail with authentication errors**
+- Regenerate credentials: `bun run test:e2e:setup`
+
+**Tests fail with "pod not found"**
+- Clear CSS data and restart:
+  ```bash
+  cd ../../solid-dev-server
+  rm -rf data/.solid-data
+  bun run dev
+  ```
+- Then regenerate credentials: `bun run test:e2e:setup`
+
+## Architecture
+
+- `scripts/` - Helper scripts for test setup
+- `.env.test` - Generated test credentials (git-ignored)
+- `check-css.ts` - Utility to check if CSS is running
+- `test-credentials.test.ts` - Validates credential loading
+- `solid-auth.e2e.test.ts` - Authentication and RDF operations
+- `sparql-queries.e2e.test.ts` - SPARQL query tests

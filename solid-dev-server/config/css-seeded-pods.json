@@ -1,12 +1,8 @@
 [
   {
+    "podName": "dev",
     "email": "dev@localhost",
     "password": "dev123",
-    "pods": [
-      {
-        "name": "dev"
-      }
-    ],
     "register": true
   }
 ]

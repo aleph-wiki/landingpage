@@ -16,9 +16,9 @@ import { waitForCSS } from './check-css.js';
  * - Session persistence and auth headers
  */
 describe('E2E: Solid Authentication and Operations', () => {
-  const CSS_URL = 'http://localhost:3000';
-  const POD_URL = `${CSS_URL}/dev/`;
-  const WEB_ID = `${CSS_URL}/dev/profile/card#me`;
+  const CSS_URL = process.env.TEST_CSS_URL || 'http://localhost:3000';
+  const POD_URL = process.env.TEST_POD_URL || `${CSS_URL}/dev/`;
+  const WEB_ID = process.env.TEST_WEB_ID || `${CSS_URL}/dev/profile/card#me`;
   const TEST_RESOURCE = `${POD_URL}test-${Date.now()}.ttl`;
 
   let session: Session;
@@ -27,12 +27,19 @@ describe('E2E: Solid Authentication and Operations', () => {
     // Check if CSS is running
     await waitForCSS(CSS_URL);
 
-    // Note: CSS with seeded pods doesn't require client credentials for local testing
-    // The session will use the pod's default authentication
+    // Load credentials from environment if available
+    const clientId = process.env.TEST_CLIENT_ID;
+    const clientSecret = process.env.TEST_CLIENT_SECRET;
+
+    // Use client credentials for authenticated session if provided
+    // Generated via CSS account API or setup-test-credentials.sh
+    // Falls back to unauthenticated session for seeded pods
     session = await initializeSolidSession({
       podUrl: POD_URL,
       webId: WEB_ID,
       oidcIssuer: CSS_URL,
+      clientId,
+      clientSecret,
     });
   });
 
@@ -49,7 +56,7 @@ describe('E2E: Solid Authentication and Operations', () => {
     expect(session).toBeDefined();
     expect(session.info.isLoggedIn).toBe(true);
     expect(session.info.webId).toBe(WEB_ID);
-  }, { timeout: 10000 });
+  });
 
   it('should write RDF data to pod', async () => {
     const testTriples = `
@@ -68,7 +75,7 @@ ex:testConcept a schema:Thing ;
     const content = await readRdfResource(TEST_RESOURCE);
     expect(content).toContain('E2E Test Concept');
     expect(content).toContain('schema:Thing');
-  }, { timeout: 10000 });
+  });
 
   it('should use authenticated fetch with valid session', async () => {
     // Write some data first
@@ -87,7 +94,7 @@ ex:authTest ex:verified true .
     const body = await response.text();
     expect(body).toContain('ex:authTest');
     expect(body).toContain('ex:verified');
-  }, { timeout: 10000 });
+  });
 
   it('should handle non-existent resources gracefully', async () => {
     const nonExistentUrl = `${POD_URL}does-not-exist-${Date.now()}.ttl`;
@@ -95,5 +102,5 @@ ex:authTest ex:verified true .
     await expect(async () => {
       await readRdfResource(nonExistentUrl);
     }).rejects.toThrow();
-  }, { timeout: 10000 });
+  });
 });

@@ -21,9 +21,9 @@ import { waitForCSS } from './check-css.js';
  * - SELECT, ASK, and CONSTRUCT queries
  */
 describe('E2E: SPARQL Queries', () => {
-  const CSS_URL = 'http://localhost:3000';
-  const POD_URL = `${CSS_URL}/dev/`;
-  const WEB_ID = `${CSS_URL}/dev/profile/card#me`;
+  const CSS_URL = process.env.TEST_CSS_URL || 'http://localhost:3000';
+  const POD_URL = process.env.TEST_POD_URL || `${CSS_URL}/dev/`;
+  const WEB_ID = process.env.TEST_WEB_ID || `${CSS_URL}/dev/profile/card#me`;
   const TEST_RESOURCE = `${POD_URL}sparql-test-${Date.now()}.ttl`;
 
   let session: Session;
@@ -32,10 +32,19 @@ describe('E2E: SPARQL Queries', () => {
     // Check if CSS is running
     await waitForCSS(CSS_URL);
 
+    // Load credentials from environment if available
+    const clientId = process.env.TEST_CLIENT_ID;
+    const clientSecret = process.env.TEST_CLIENT_SECRET;
+
+    // Use client credentials for authenticated session if provided
+    // Generated via CSS account API or setup-test-credentials.sh
+    // Falls back to unauthenticated session for seeded pods
     session = await initializeSolidSession({
       podUrl: POD_URL,
       webId: WEB_ID,
       oidcIssuer: CSS_URL,
+      clientId,
+      clientSecret,
     });
 
     // Create test data
@@ -58,7 +67,7 @@ ex:entity1 a schema:Thing ;
 `;
 
     await appendTriples(TEST_RESOURCE, testData);
-  }, { timeout: 15000 });
+  });
 
   afterEach(async () => {
     // Cleanup test resource
@@ -81,7 +90,7 @@ ex:entity1 a schema:Thing ;
       expect(matches).toHaveLength(2);
       expect(matches.some((m) => m.subject.includes('concept1'))).toBe(true);
       expect(matches.some((m) => m.subject.includes('concept2'))).toBe(true);
-    }, { timeout: 10000 });
+    });
 
     it('should find specific subject properties', async () => {
       const matches = await sparqlMatch(
@@ -94,7 +103,7 @@ ex:entity1 a schema:Thing ;
       expect(matches.length).toBeGreaterThan(0);
       expect(matches.some((m) => m.predicate.includes('prefLabel'))).toBe(true);
       expect(matches.some((m) => m.predicate.includes('related'))).toBe(true);
-    }, { timeout: 10000 });
+    });
 
     it('should match by predicate only', async () => {
       const matches = await sparqlMatch(
@@ -106,7 +115,7 @@ ex:entity1 a schema:Thing ;
 
       expect(matches).toHaveLength(2);
       expect(matches.every((m) => m.object.includes('Concept'))).toBe(true);
-    }, { timeout: 10000 });
+    });
   });
 
   describe('executeSparqlQuery', () => {
@@ -128,7 +137,7 @@ ex:entity1 a schema:Thing ;
       expect(result.head.vars).toContain('concept');
       expect(result.head.vars).toContain('label');
       expect(result.results.bindings).toHaveLength(2);
-    }, { timeout: 10000 });
+    });
 
     it('should execute ASK query and return boolean', async () => {
       const query = `
@@ -143,7 +152,7 @@ ex:entity1 a schema:Thing ;
 
       expect(result).toHaveProperty('boolean');
       expect(result.boolean).toBe(true);
-    }, { timeout: 10000 });
+    });
 
     it('should return false for non-matching ASK query', async () => {
       const query = `
@@ -157,7 +166,7 @@ ex:entity1 a schema:Thing ;
       const result = JSON.parse(resultJson);
 
       expect(result.boolean).toBe(false);
-    }, { timeout: 10000 });
+    });
 
     it('should execute CONSTRUCT query and return Turtle', async () => {
       const query = `
@@ -178,6 +187,6 @@ ex:entity1 a schema:Thing ;
       expect(typeof resultTurtle).toBe('string');
       // Should be valid Turtle format
       expect(resultTurtle).toMatch(/<http:\/\/example\.org\/concept[12]>/);
-    }, { timeout: 10000 });
+    });
   });
 });

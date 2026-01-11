@@ -5,8 +5,10 @@
   "private": true,
   "scripts": {
     "oxigraph": "oxigraph serve --location data/.oxigraph-data",
-    "solid": "npx -y @solid/community-server@7 -c @css:config/sparql-file-storage.json -f data/.solid-data/ -p 3000 --sparqlEndpoint http://localhost:7878/query --seedConfig config/css-seeded-pods.json",
-    "dev": "concurrently \"npm run oxigraph\" \"npm run solid\" --names \"oxigraph,solid\" --prefix-colors \"yellow,blue\""
+    "solid:file": "npx -y @solid/community-server@7 -c @css:config/file.json -f data/.solid-data/ -p 3000 --seedConfig config/css-seeded-pods.json",
+    "solid:sparql": "npx -y @solid/community-server@7 -c @css:config/sparql-file-storage.json -f data/.solid-data/ -p 3000 --sparqlEndpoint http://localhost:7878/query --seedConfig config/css-seeded-pods.json",
+    "dev": "bun run solid:file",
+    "dev:sparql": "concurrently \"npm run oxigraph\" \"npm run solid:sparql\" --names \"oxigraph,solid\" --prefix-colors \"yellow,blue\""
   },
   "devDependencies": {
     "concurrently": "^8.0.0"
