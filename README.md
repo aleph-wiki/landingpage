@@ -1,94 +1,91 @@
-# Aleph Wiki
+# aleph.wiki
 
-Knowledge graph with Solid Protocol and SPARQL backend.
+An experimental tool for connection-based learning through RDF knowledge graphs.
 
-## Quick Start
+---
 
-### Using Nix with devenv
+Aleph.wiki enables interactive learning sessions where concepts are captured as semantic triples in Turtle format, building a persistent knowledge graph that grows across sessions. The graph uses standard ontologies (SKOS, FOAF, schema.org) to create rich, queryable representations of learning material with cross-linked concepts, multilingual labels, and temporal relationships.
 
-```bash
-# Enter development shell
-nix develop --impure
+Each interaction creates nodes in the graph with proper semantic relationships, allowing you to visualize how concepts connect, track learning across time, and explore knowledge through multiple dimensions. The system is designed for minimal interruption during learning - you provide brief inputs, and the assistant responds by writing structured RDF data to `index.ttl`, capturing both the concepts and the context of each learning interaction.
 
-# Start all services (Oxigraph + Community Solid Server)
-devenv up
+## Quick Example
+
+When you ask "Why were there protests in Iran in 2022?", the system creates interconnected concepts:
+
+```turtle
+<concept:mahsa-amini-protests> a skos:Concept , schema:Event ;
+    skos:prefLabel "2022 Iranian Protests"@en , "اعتراضات ایران ۱۴۰۱"@fa ;
+    skos:related <concept:women-life-freedom> , <concept:morality-police> ;
+    schema:startDate "2022-09-16"^^xsd:date .
 ```
 
-**Note**: The `--impure` flag is required for devenv to create its local state directory.
+These concepts link to broader hierarchies (human-rights-movements, womens-rights) and connect to other sessions' concepts, creating a web of knowledge that accumulates over time.
 
-### Manual Setup
+## Solid Protocol Integration
 
-```bash
-# Install dependencies
-cd solid-dev-server
-bun install
+This project is designed to work with the **Solid Protocol** for decentralized, user-controlled data storage:
 
-# Terminal 1: Start Oxigraph
-bun run oxigraph
+- **Agent**: Claude Code writes RDF triples directly to your Solid Pod via authenticated PATCH operations
+- **Visualizer**: Web-based Solid app reads your knowledge graph and renders it with live updates
+- **Ownership**: You control your data - knowledge graphs live in your Pod, not our servers
+- **Collaboration**: Share concepts across Pods, create team workspaces, reference public ontologies
 
-# Terminal 2: Start Community Solid Server
-bun run solid
-```
+See [`rdf-graph-viewer/SOLID_INTEGRATION.md`](./rdf-graph-viewer/SOLID_INTEGRATION.md) for detailed architecture and implementation plan.
 
-## Project Structure
+**Status:** Solid integration is planned but not yet implemented. Current version uses local filesystem storage.
 
-```
-aleph-wiki/
-├── app/                    # RDF Graph Viewer (Vite + D3.js)
-├── mcp-server/            # MCP server for Solid/SPARQL integration
-├── solid-dev-server/      # Community Solid Server + Oxigraph setup
-├── agent/                 # Claude agent experiments
-└── flake.nix              # Nix development environment
-```
+## Requirements
 
-## Services
+- **[Claude Code](https://claude.com/claude-code)** - Required for the RDF learning agent
 
-When running with `devenv up`, the following services start automatically:
+The agent runs as a skill within Claude Code and writes semantic triples to your knowledge graph.
 
-- **Oxigraph SPARQL**: http://localhost:7878
-  - Query endpoint: http://localhost:7878/query
-  - Update endpoint: http://localhost:7878/update
+## Repository Structure
 
-- **Community Solid Server**: http://localhost:3000
-  - Account dashboard: http://localhost:3000/.account/
-  - Dev pod: http://localhost:3000/dev/
-  - WebID: http://localhost:3000/dev/profile/card#me
+- **`agent/`** - RDF learning agent (Claude Code skill)
+- **`mcp-server/`** - Model Context Protocol server for Solid Pod operations
+- **`rdf-graph-viewer/`** - Graph visualization frontend (early development)
+- **`aleph.wiki/`** - Future Solid app implementation
+- **`.claude/`** - Claude Code configuration for this repository
 
-### Default Credentials
+## Usage
 
-- **Email**: dev@localhost
-- **Password**: dev123
-- **Pod**: http://localhost:3000/dev/
+**⚠️ Early Development Warning**: This project is in active development. APIs, file formats, and core functionality may change without notice. Expect breaking changes.
 
-See [solid-dev-server/SOLID_CREDENTIALS.md](solid-dev-server/SOLID_CREDENTIALS.md) for details.
+### Setup
 
-## Development Commands
+1. Install [Claude Code](https://claude.com/claude-code)
 
-In the devenv shell:
+2. Copy the agent skill to your Claude Code instance:
+   ```bash
+   cp agent/rdf-learning.md ~/.config/claude-code/skills/rdf-learning.md
+   ```
 
-```bash
-devenv up           # Start all services in background
-get-credentials     # Generate Solid client credentials
-reset-data          # Clear all data and reinitialize
-```
+   Or use the project-local command (already configured):
+   ```bash
+   # Skill is already in .claude/commands/rdf-learning.md
+   ```
 
-## Running Tests
+3. Ensure `~/aleph-wiki/` directory exists for storing the knowledge graph:
+   ```bash
+   mkdir -p ~/aleph-wiki/ontologies
+   ```
 
-```bash
-# MCP server tests
-cd mcp-server
-bun test
+4. Invoke the skill in Claude Code:
+   ```
+   /rdf-learning
+   ```
 
-# E2E tests (requires running CSS)
-bun test:e2e
+### Learning Flow
 
-# App tests
-cd app
-bun test
-```
+1. Start a learning session by invoking the `rdf-learning` skill
+2. Ask questions or provide topics you want to explore
+3. The assistant writes RDF triples to `~/aleph-wiki/index.ttl`
+4. Monitor the file or use RDF visualization tools to explore your growing knowledge graph
+5. Future sessions build on previous concepts, creating cross-session links
 
-## Documentation
+The graph structure allows filtering by session, time period, topic hierarchy, or semantic relationships - supporting both visual exploration and SPARQL queries for research.
 
-- [Solid Setup](solid-dev-server/SOLID_SETUP.md)
-- [Credentials Guide](solid-dev-server/SOLID_CREDENTIALS.md)
-- [E2E Tests](mcp-server/test/e2e/RUNNING.md)
+## License
+
+AGPL-3.0 - see [LICENSE](./LICENSE) for details.
